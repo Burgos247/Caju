@@ -14,7 +14,7 @@ export default function HostPage() {
 
   if (phase === "idle") return <SetupScreen onCreate={createSession} error={error} />
   if (phase === "lobby") return <LobbyScreen sessionId={sessionId!} />
-  if (phase === "question" || phase === "between")
+  if (phase === "question")
     return <LiveScreen onPush={pushQuestion} onFinish={finishSession} />
   if (phase === "results") return <FinishedScreen sessionId={sessionId!} />
 

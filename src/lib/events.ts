@@ -67,7 +67,7 @@ export async function publishQuestion(
   ndk: NDK,
   sessionId: string,
   index: number,
-  question: Omit<QuestionContent, never>
+  question: QuestionContent
 ): Promise<NDKEvent> {
   const dTag = `${sessionId}:q${index}`
 
@@ -195,7 +195,10 @@ export function calculatePoints(opts: {
 
   const elapsed = opts.answered_at - opts.question_published_at
   const window = opts.duration * 1000
-  const ratio = Math.max(0, 1 - elapsed / window) // 1.0 = inmediato, 0 = al límite
+  // Clamp a [0, 1] — el reloj del cliente puede estar adelantado al del relay
+  // (elapsed negativo) o atrasado (elapsed > window); ambos casos darían
+  // puntajes fuera de rango sin clamping.
+  const ratio = Math.min(1, Math.max(0, 1 - elapsed / window))
 
   return Math.round(BASE_POINTS + SPEED_BONUS * ratio)
 }

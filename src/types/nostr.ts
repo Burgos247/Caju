@@ -15,7 +15,7 @@ export const KIND = {
 // tags:
 //   ["d", sessionId]
 //   ["title", "nombre del quiz"]
-//   ["status", "lobby" | "active" | "finished"]
+//   ["status", "lobby" | "finished"]
 //   ["question_count", "N"]
 
 export interface SessionContent {
@@ -25,7 +25,7 @@ export interface SessionContent {
   created_at: number
 }
 
-export type SessionStatus = "lobby" | "active" | "finished"
+export type SessionStatus = "lobby" | "finished"
 
 // ─── Question (kind 30001) ────────────────────────────────────────────────────
 // Publicado por el host UNA vez por pregunta cuando la activa.

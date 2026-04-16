@@ -7,21 +7,20 @@ import {
   publishAnswer,
   updateSessionStatus,
 } from "@/lib/events"
-import { SessionStatus, QuestionContent } from "@/types/nostr"
+import { QuestionContent } from "@/types/nostr"
 
 // ─── useNostrIdentity ─────────────────────────────────────────────────────────
 // Conecta NDK y establece la identidad del usuario (NIP-07 o efímera).
 // Llamar una vez en el layout raíz o en cada page.
 
 export function useNostrIdentity() {
-  const setMyPubkey = useGameStore((s) => s.setMyPubkey)
   const myPubkey = useGameStore((s) => s.myPubkey)
-  const setError = useGameStore((s) => s.setError)
 
   useEffect(() => {
     if (myPubkey) return // ya identificado
 
     async function init() {
+      const { setMyPubkey, setError } = useGameStore.getState()
       try {
         await connectNDK()
         const signer = await getOrCreateSigner()
@@ -32,7 +31,7 @@ export function useNostrIdentity() {
       }
     }
     init()
-  }, [myPubkey, setMyPubkey, setError])
+  }, [myPubkey])
 
   return myPubkey
 }
@@ -41,71 +40,79 @@ export function useNostrIdentity() {
 // Para la página /host. Crea y gestiona la sesión como host.
 
 export function useHostSession() {
-  const store = useGameStore()
   const myPubkey = useNostrIdentity()
+  const sessionId = useGameStore((s) => s.sessionId)
+  const session = useGameStore((s) => s.session)
+  const phase = useGameStore((s) => s.phase)
+  const currentQuestionIndex = useGameStore((s) => s.currentQuestionIndex)
+  const players = useGameStore((s) => s.players)
+  const error = useGameStore((s) => s.error)
 
   const createSession = useCallback(
     async (opts: { title: string; description?: string; question_count: number }) => {
+      const { setIsHost, setSessionId, setPhase, subscribeToSession, setError } =
+        useGameStore.getState()
       try {
-        store.setIsHost(true)
+        setIsHost(true)
         const ndk = await connectNDK()
-        const { sessionId } = await publishSession(ndk, opts)
-        store.setSessionId(sessionId)
-        store.setPhase("lobby")
-        await store.subscribeToSession(sessionId)
-        return sessionId
+        const { sessionId: id } = await publishSession(ndk, opts)
+        setSessionId(id)
+        setPhase("lobby")
+        await subscribeToSession(id)
+        return id
       } catch (err) {
-        store.setError(`Error al crear sesión: ${err}`)
+        setError(`Error al crear sesión: ${err}`)
         return null
       }
     },
-    [store]
+    []
   )
 
   const pushQuestion = useCallback(
     async (index: number, question: QuestionContent) => {
-      const { sessionId, session } = store
-      if (!sessionId || !session) return
+      const { sessionId: sid, session: sess, setCurrentQuestionIndex, setPhase, setError } =
+        useGameStore.getState()
+      if (!sid || !sess) return
 
       try {
         const ndk = await connectNDK()
-        await publishQuestion(ndk, sessionId, index, question)
-        store.setCurrentQuestionIndex(index)
-        store.setPhase("question")
+        await publishQuestion(ndk, sid, index, question)
+        setCurrentQuestionIndex(index)
+        setPhase("question")
       } catch (err) {
-        store.setError(`Error al publicar pregunta: ${err}`)
+        setError(`Error al publicar pregunta: ${err}`)
       }
     },
-    [store]
+    []
   )
 
   const finishSession = useCallback(async () => {
-    const { sessionId, session } = store
-    if (!sessionId || !session) return
+    const { sessionId: sid, session: sess, setPhase, setError } = useGameStore.getState()
+    if (!sid || !sess) return
 
     try {
       const ndk = await connectNDK()
       const content = {
-        title: session.title,
-        description: session.description,
-        question_count: session.question_count,
-        created_at: session.created_at,
+        title: sess.title,
+        description: sess.description,
+        question_count: sess.question_count,
+        created_at: sess.created_at,
       }
-      await updateSessionStatus(ndk, sessionId, "finished" as SessionStatus, content)
-      store.setPhase("results")
+      await updateSessionStatus(ndk, sid, "finished", content)
+      setPhase("results")
     } catch (err) {
-      store.setError(`Error al finalizar sesión: ${err}`)
+      setError(`Error al finalizar sesión: ${err}`)
     }
-  }, [store])
+  }, [])
 
   return {
     myPubkey,
-    sessionId: store.sessionId,
-    session: store.session,
-    phase: store.phase,
-    currentQuestionIndex: store.currentQuestionIndex,
-    players: store.players,
-    error: store.error,
+    sessionId,
+    session,
+    phase,
+    currentQuestionIndex,
+    players,
+    error,
     createSession,
     pushQuestion,
     finishSession,
@@ -116,46 +123,60 @@ export function useHostSession() {
 // Para las páginas /join y /play. El jugador se une y responde.
 
 export function usePlayerSession(sessionId: string) {
-  const store = useGameStore()
   const myPubkey = useNostrIdentity()
+  const session = useGameStore((s) => s.session)
+  const phase = useGameStore((s) => s.phase)
+  const currentQuestion = useGameStore(selectCurrentQuestion)
+  const hasAnswered = useGameStore((s) => s.hasAnswered)
+  const myAnswers = useGameStore((s) => s.myAnswers)
+  const leaderboard = useGameStore(selectLeaderboard)
+  const answerCount = useGameStore(selectAnswerCount)
+  const error = useGameStore((s) => s.error)
 
   // Suscribirse cuando llega sessionId
   useEffect(() => {
     if (!sessionId) return
-    store.subscribeToSession(sessionId)
-    store.setIsHost(false)
+    const { subscribeToSession, setIsHost, cleanup } = useGameStore.getState()
+    subscribeToSession(sessionId)
+    setIsHost(false)
 
-    return () => store.cleanup()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => cleanup()
   }, [sessionId])
 
   const submitAnswer = useCallback(
     async (selected_index: number) => {
-      const { sessionId: sid, currentQuestionIndex, hasAnswered } = store
-      if (!sid || hasAnswered || currentQuestionIndex < 0) return
+      const {
+        sessionId: sid,
+        currentQuestionIndex,
+        hasAnswered: alreadyAnswered,
+        setMyAnswer,
+        setHasAnswered,
+        setError,
+      } = useGameStore.getState()
+      if (!sid || alreadyAnswered || currentQuestionIndex < 0) return
 
       try {
         const ndk = await connectNDK()
         await publishAnswer(ndk, sid, currentQuestionIndex, selected_index)
-        store.setMyAnswer(currentQuestionIndex, selected_index)
-        store.setHasAnswered(true)
+        setMyAnswer(currentQuestionIndex, selected_index)
+        setHasAnswered(true)
       } catch (err) {
-        store.setError(`Error al enviar respuesta: ${err}`)
+        setError(`Error al enviar respuesta: ${err}`)
       }
     },
-    [store]
+    []
   )
 
   return {
     myPubkey,
-    session: store.session,
-    phase: store.phase,
-    currentQuestion: selectCurrentQuestion(store),
-    hasAnswered: store.hasAnswered,
-    myAnswers: store.myAnswers,
-    leaderboard: selectLeaderboard(store),
-    answerCount: selectAnswerCount(store),
-    error: store.error,
+    session,
+    phase,
+    currentQuestion,
+    hasAnswered,
+    myAnswers,
+    leaderboard,
+    answerCount,
+    error,
     submitAnswer,
   }
 }

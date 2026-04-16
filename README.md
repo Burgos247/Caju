@@ -14,7 +14,7 @@ Quizzes en tiempo real sobre Nostr. Sin backend, sin base de datos — cada preg
 
 | Kind  | Nombre   | Quién publica | Descripción |
 |-------|----------|---------------|-------------|
-| 30000 | SESSION  | Host          | Crea/actualiza la sesión (status: lobby → active → finished) |
+| 30000 | SESSION  | Host          | Crea/actualiza la sesión (status: lobby → finished) |
 | 30001 | QUESTION | Host          | Publica cada pregunta cuando la activa |
 | 30002 | ANSWER   | Jugador       | Respuesta firmada con timestamp del cliente |
 

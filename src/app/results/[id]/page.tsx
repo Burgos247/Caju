@@ -2,7 +2,6 @@
 
 import { useParams } from "next/navigation"
 import { usePlayerSession } from "@/lib/hooks"
-import { useGameStore } from "@/store/gameStore"
 
 export default function ResultsPage() {
   const params = useParams()

@@ -18,7 +18,6 @@ const EXPLICIT_RELAYS: string[] = process.env.NEXT_PUBLIC_RELAYS
 // reconexiones en cada hot-reload durante desarrollo.
 
 declare global {
-  // eslint-disable-next-line no-var
   var __ndk: NDK | undefined
 }
 

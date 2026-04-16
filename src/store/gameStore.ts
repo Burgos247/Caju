@@ -33,7 +33,7 @@ interface GameState {
   _subs: NDKSubscription[]
 
   // UI flags
-  phase: "idle" | "lobby" | "question" | "between" | "results"
+  phase: "idle" | "lobby" | "question" | "results"
   error: string | null
 }
 
@@ -213,7 +213,7 @@ export const useGameStore = create<GameState & GameActions>()(
         sessionSub.on("event", (event: NDKEvent) => {
           const parsed = parseSession(event)
           if (!parsed) return
-          const { setSession, updateSessionStatus, setPhase } = get()
+          const { setSession, setPhase } = get()
           setSession(parsed)
 
           if (parsed.status === "lobby") setPhase("lobby")

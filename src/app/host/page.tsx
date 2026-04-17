@@ -65,7 +65,11 @@ function SetupScreen({
   const removeQuestion = (i: number) => {
     if (questions.length === 1) return
     setQuestions((qs) => qs.filter((_, idx) => idx !== i))
-    setActiveQ((prev) => Math.min(prev, questions.length - 2))
+    setActiveQ((prev) => {
+      // Si borramos una pregunta anterior a la activa, el índice se corre hacia abajo.
+      const adjusted = i < prev ? prev - 1 : prev
+      return Math.min(adjusted, questions.length - 2)
+    })
   }
 
   const handleCreate = async () => {
@@ -333,16 +337,19 @@ function LiveScreen({
   const handleNext = useCallback(async () => {
     if (advancing) return
     setAdvancing(true)
-    const qs = questionsRef.current
-    if (!qs) return
+    try {
+      const qs = questionsRef.current
+      if (!qs) return
 
-    if (isLastQuestion) {
-      await onFinish()
-    } else {
-      const nextIndex = currentQuestionIndex + 1
-      await onPush(nextIndex, qs[nextIndex])
+      if (isLastQuestion) {
+        await onFinish()
+      } else {
+        const nextIndex = currentQuestionIndex + 1
+        await onPush(nextIndex, qs[nextIndex])
+      }
+    } finally {
+      setAdvancing(false)
     }
-    setAdvancing(false)
   }, [advancing, currentQuestionIndex, isLastQuestion, onFinish, onPush])
 
   const totalQuestions = session?.question_count ?? 0

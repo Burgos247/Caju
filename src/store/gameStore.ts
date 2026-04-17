@@ -18,6 +18,14 @@ interface GameState {
   // Preguntas (indexadas por su índice numérico)
   questions: Record<number, Question>
 
+  // Respuestas huérfanas: llegaron antes que la pregunta a la que referencian.
+  // Se drenan cuando la pregunta correspondiente aparece.
+  _pendingAnswers: Record<number, Array<{
+    pubkey: string
+    selected_index: number
+    answered_at: number
+  }>>
+
   // Jugadores (indexados por pubkey)
   players: Record<string, Player>
 
@@ -90,6 +98,7 @@ const initialState: GameState = {
   session: null,
   sessionId: null,
   questions: {},
+  _pendingAnswers: {},
   players: {},
   currentQuestionIndex: -1,
   isHost: false,
@@ -213,11 +222,12 @@ export const useGameStore = create<GameState & GameActions>()(
         sessionSub.on("event", (event: NDKEvent) => {
           const parsed = parseSession(event)
           if (!parsed) return
-          const { setSession, setPhase } = get()
+          const { setSession, setPhase, phase } = get()
           setSession(parsed)
 
-          if (parsed.status === "lobby") setPhase("lobby")
-          else if (parsed.status === "finished") setPhase("results")
+          // "finished" es terminal — una vez que llegó, no retrocedemos.
+          if (parsed.status === "finished") setPhase("results")
+          else if (parsed.status === "lobby" && phase !== "results") setPhase("lobby")
         })
 
         // — Preguntas (host publica cuando activa cada una) —
@@ -228,10 +238,39 @@ export const useGameStore = create<GameState & GameActions>()(
         questionSub.on("event", (event: NDKEvent) => {
           const parsed = parseQuestion(event)
           if (!parsed) return
-          const { addQuestion, setCurrentQuestionIndex, setPhase } = get()
+          const state = get()
+          const { addQuestion, setCurrentQuestionIndex, setPhase, recordAnswer, upsertPlayer } = state
           addQuestion(parsed)
-          setCurrentQuestionIndex(parsed.index)
-          setPhase("question")
+
+          // Solo avanzar el índice — nunca retroceder al procesar replays desordenados.
+          if (parsed.index > state.currentQuestionIndex) {
+            setCurrentQuestionIndex(parsed.index)
+          }
+
+          // No pisar el phase si la sesión ya terminó.
+          if (state.session?.status !== "finished") setPhase("question")
+
+          // Drenar respuestas huérfanas que esperaban esta pregunta.
+          const pending = state._pendingAnswers[parsed.index]
+          if (pending && pending.length > 0) {
+            pending.forEach((a) => {
+              upsertPlayer(a.pubkey, {})
+              recordAnswer({
+                pubkey: a.pubkey,
+                questionIndex: parsed.index,
+                selected_index: a.selected_index,
+                answered_at: a.answered_at,
+                question_published_at: parsed.published_at,
+                duration: parsed.duration,
+                correct_index: parsed.correct_index,
+              })
+            })
+            set((s) => {
+              const rest = { ...s._pendingAnswers }
+              delete rest[parsed.index]
+              return { _pendingAnswers: rest }
+            })
+          }
         })
 
         // — Respuestas (todos los jugadores) —
@@ -246,10 +285,28 @@ export const useGameStore = create<GameState & GameActions>()(
               event.tags.find((t) => t[0] === "index")?.[1] ?? -1
             )
             if (questionIndex < 0) return
+            if (typeof content.selected_index !== "number" || typeof content.answered_at !== "number") return
 
             const { questions, recordAnswer, upsertPlayer } = get()
             const question = questions[questionIndex]
-            if (!question) return
+
+            if (!question) {
+              // Respuesta llegó antes que la pregunta — encolar para procesar al llegar.
+              set((s) => ({
+                _pendingAnswers: {
+                  ...s._pendingAnswers,
+                  [questionIndex]: [
+                    ...(s._pendingAnswers[questionIndex] ?? []),
+                    {
+                      pubkey: event.pubkey,
+                      selected_index: content.selected_index,
+                      answered_at: content.answered_at,
+                    },
+                  ],
+                },
+              }))
+              return
+            }
 
             // Asegurarse de que el jugador existe
             upsertPlayer(event.pubkey, {})
@@ -275,7 +332,7 @@ export const useGameStore = create<GameState & GameActions>()(
 
       cleanup: () => {
         get()._subs.forEach((s) => s.stop())
-        set({ _subs: [] })
+        set({ _subs: [], _pendingAnswers: {} })
       },
 
       // ── Error ──

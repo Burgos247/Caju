@@ -162,7 +162,8 @@ export function parseQuestion(event: NDKEvent): Question | null {
     const dTag = event.tags.find((t) => t[0] === "d")?.[1]
     const index = Number(event.tags.find((t) => t[0] === "index")?.[1] ?? -1)
 
-    if (!dTag || index < 0) return null
+    // Sin timestamp del relay no podemos calcular scoring — descartar.
+    if (!dTag || index < 0 || !event.created_at) return null
 
     return {
       id: dTag,
@@ -171,7 +172,7 @@ export function parseQuestion(event: NDKEvent): Question | null {
       options: content.options,
       correct_index: content.correct_index,
       duration: content.duration,
-      published_at: (event.created_at ?? 0) * 1000,
+      published_at: event.created_at * 1000,
     }
   } catch {
     return null

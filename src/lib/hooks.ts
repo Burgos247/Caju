@@ -137,10 +137,19 @@ export function usePlayerSession(sessionId: string) {
   useEffect(() => {
     if (!sessionId) return
     const { subscribeToSession, setIsHost, cleanup } = useGameStore.getState()
-    subscribeToSession(sessionId)
     setIsHost(false)
 
-    return () => cleanup()
+    // subscribeToSession es async — si el componente se desmonta antes de que
+    // resuelva, tenemos que esperar para correr el cleanup sobre las subs reales.
+    let cancelled = false
+    const ready = subscribeToSession(sessionId)
+
+    return () => {
+      cancelled = true
+      ready.finally(() => {
+        if (cancelled) cleanup()
+      })
+    }
   }, [sessionId])
 
   const submitAnswer = useCallback(

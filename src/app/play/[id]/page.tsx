@@ -10,13 +10,19 @@ export default function PlayPage() {
   const router = useRouter()
   const sessionId = params.id as string
 
-  const { currentQuestion, hasAnswered, myAnswers, phase, submitAnswer, error } =
+  const { myPubkey, currentQuestion, hasAnswered, myAnswers, phase, submitAnswer, error } =
     usePlayerSession(sessionId)
 
   useEffect(() => {
     if (phase === "results") router.push(`/results/${sessionId}`)
   }, [phase, sessionId, router])
 
+  // Si llegan acá sin login (URL directa), mandamos al lobby para autenticarse.
+  useEffect(() => {
+    if (!myPubkey) router.replace(`/join/${sessionId}`)
+  }, [myPubkey, sessionId, router])
+
+  if (!myPubkey) return null
   if (error) return <ErrorScreen message={error} />
   if (!currentQuestion) return <WaitingScreen />
 

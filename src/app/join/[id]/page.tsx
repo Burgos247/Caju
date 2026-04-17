@@ -6,6 +6,7 @@ import { usePlayerSession } from "@/lib/hooks"
 import { selectPlayerCount } from "@/store/gameStore"
 import { useGameStore } from "@/store/gameStore"
 import { LoginModal } from "@/components/LoginModal"
+import { IdentityChip } from "@/components/IdentityChip"
 
 export default function JoinPage() {
   const params = useParams()
@@ -31,10 +32,6 @@ export default function JoinPage() {
   if (!myPubkey) return <LoginGate sessionId={sessionId} />
   if (error) return <ErrorScreen message={error} />
   if (!session) return <LoadingScreen sessionId={sessionId} />
-
-  const shortPubkey = myPubkey
-    ? `${myPubkey.slice(0, 6)}…${myPubkey.slice(-4)}`
-    : "conectando…"
 
   return (
     <main className="caju-lobby">
@@ -73,13 +70,8 @@ export default function JoinPage() {
 
         {/* Identidad del jugador */}
         <div className="caju-lobby__identity">
-          <div className="caju-identity-chip">
-            <span className="caju-identity-chip__dot" />
-            <span className="caju-identity-chip__key">{shortPubkey}</span>
-          </div>
-          <p className="caju-lobby__identity-hint">
-            {myPubkey ? "identificado via Nostr" : "generando identidad…"}
-          </p>
+          <IdentityChip variant="full" />
+          <p className="caju-lobby__identity-hint">identificado via Nostr</p>
         </div>
 
         {/* Info sesión */}
@@ -301,31 +293,6 @@ const lobbyStyles = `
     flex-direction: column;
     align-items: flex-start;
     gap: 0.4rem;
-  }
-
-  .caju-identity-chip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #1a1a1a;
-    border: 0.5px solid #2a2a2a;
-    border-radius: 6px;
-    padding: 6px 12px;
-  }
-
-  .caju-identity-chip__dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #6ee7b7;
-    flex-shrink: 0;
-  }
-
-  .caju-identity-chip__key {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.8rem;
-    color: #888;
-    letter-spacing: 0.02em;
   }
 
   .caju-lobby__identity-hint {

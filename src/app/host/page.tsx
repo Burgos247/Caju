@@ -6,6 +6,7 @@ import { useHostSession } from "@/lib/hooks"
 import { useGameStore, selectLeaderboard, selectAnswerCount } from "@/store/gameStore"
 import { QuestionContent } from "@/types/nostr"
 import { LoginModal } from "@/components/LoginModal"
+import { IdentityChip } from "@/components/IdentityChip"
 
 // ─── Page root ────────────────────────────────────────────────────────────────
 
@@ -117,7 +118,7 @@ function SetupScreen({
 
         <div className="caju-host__header">
           <span className="caju-logo">cajú</span>
-          <span className="caju-host__role">host</span>
+          <IdentityChip />
         </div>
 
         {/* Datos del quiz */}
@@ -271,9 +272,12 @@ function LobbyScreen({ sessionId }: { sessionId: string }) {
 
         <div className="caju-host__header">
           <span className="caju-logo">cajú</span>
-          <div className="caju-live-badge">
-            <span className="caju-pulse" />
-            lobby
+          <div className="caju-host__header-right">
+            <div className="caju-live-badge">
+              <span className="caju-pulse" />
+              lobby
+            </div>
+            <IdentityChip />
           </div>
         </div>
 
@@ -290,7 +294,7 @@ function LobbyScreen({ sessionId }: { sessionId: string }) {
             <button className="caju-btn-ghost" onClick={copyUrl}>copiar</button>
           </div>
           <p className="caju-join-card__hint">
-            los jugadores se identifican con su Nostr key o de forma anónima
+            los jugadores necesitan una identidad Nostr (extensión, nsec o bunker) para entrar
           </p>
         </div>
 
@@ -389,9 +393,12 @@ function LiveScreen({
         {/* Header */}
         <div className="caju-host__header">
           <span className="caju-logo">cajú</span>
-          <div className="caju-live-badge">
-            <span className="caju-pulse" />
-            en vivo
+          <div className="caju-host__header-right">
+            <div className="caju-live-badge">
+              <span className="caju-pulse" />
+              en vivo
+            </div>
+            <IdentityChip />
           </div>
         </div>
 
@@ -507,7 +514,10 @@ function FinishedScreen({ sessionId }: { sessionId: string }) {
 
         <div className="caju-host__header">
           <span className="caju-logo">cajú</span>
-          <span className="caju-finished-badge">terminado</span>
+          <div className="caju-host__header-right">
+            <span className="caju-finished-badge">terminado</span>
+            <IdentityChip />
+          </div>
         </div>
 
         <div>
@@ -599,6 +609,12 @@ const hostStyles = `
     font-weight: 800;
     letter-spacing: -0.04em;
     color: #f0e040;
+  }
+
+  .caju-host__header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .caju-host__role {

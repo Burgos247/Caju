@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react"
 import { useGameStore, selectLeaderboard, selectCurrentQuestion, selectAnswerCount } from "@/store/gameStore"
-import { connectNDK, getOrCreateSigner } from "@/lib/nostr"
+import { useAuthStore } from "@/store/authStore"
+import { connectNDK, loginWithExtension } from "@/lib/nostr"
 import {
   publishSession,
   publishQuestion,
@@ -10,28 +11,37 @@ import {
 import { QuestionContent } from "@/types/nostr"
 
 // ─── useNostrIdentity ─────────────────────────────────────────────────────────
-// Conecta NDK y establece la identidad del usuario (NIP-07 o efímera).
-// Llamar una vez en el layout raíz o en cada page.
+// Lee la identidad ya autenticada (vía LoginModal). Si la sesión persistida es
+// NIP-07 y la extensión está disponible, intenta restaurar el signer en silencio.
+// Si no, retorna null y el caller debe mostrar <LoginModal />.
 
 export function useNostrIdentity() {
   const myPubkey = useGameStore((s) => s.myPubkey)
+  const profile = useAuthStore((s) => s.profile)
+  const loginMethod = useAuthStore((s) => s.loginMethod)
+  const setUser = useAuthStore((s) => s.setUser)
 
+  // Rehidratación silenciosa: si volvimos con loginMethod=extension persistido
+  // y window.nostr está, restauramos el signer sin prompt explícito.
   useEffect(() => {
-    if (myPubkey) return // ya identificado
+    if (myPubkey) return
+    if (!profile || loginMethod !== "extension") return
+    if (typeof window === "undefined" || !window.nostr) return
 
-    async function init() {
-      const { setMyPubkey, setError } = useGameStore.getState()
+    let cancelled = false
+    ;(async () => {
       try {
         await connectNDK()
-        const signer = await getOrCreateSigner()
-        const user = await signer.user()
-        setMyPubkey(user.pubkey)
-      } catch (err) {
-        setError(`No se pudo conectar: ${err}`)
+        const user = await loginWithExtension()
+        if (!cancelled) await setUser(user, "extension")
+      } catch {
+        // El usuario rechazó o algo falló — la página mostrará el modal.
       }
+    })()
+    return () => {
+      cancelled = true
     }
-    init()
-  }, [myPubkey])
+  }, [myPubkey, profile, loginMethod, setUser])
 
   return myPubkey
 }

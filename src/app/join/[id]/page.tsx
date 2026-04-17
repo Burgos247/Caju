@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { usePlayerSession } from "@/lib/hooks"
 import { selectPlayerCount } from "@/store/gameStore"
 import { useGameStore } from "@/store/gameStore"
+import { LoginModal } from "@/components/LoginModal"
 
 export default function JoinPage() {
   const params = useParams()
@@ -27,6 +28,7 @@ export default function JoinPage() {
     if (phase === "results") router.push(`/results/${sessionId}`)
   }, [phase, sessionId, router])
 
+  if (!myPubkey) return <LoginGate sessionId={sessionId} />
   if (error) return <ErrorScreen message={error} />
   if (!session) return <LoadingScreen sessionId={sessionId} />
 
@@ -94,6 +96,21 @@ export default function JoinPage() {
         </div>
       </div>
 
+      <style>{lobbyStyles}</style>
+    </main>
+  )
+}
+
+function LoginGate({ sessionId }: { sessionId: string }) {
+  return (
+    <main className="caju-lobby">
+      <div className="caju-lobby__inner caju-lobby__inner--loading">
+        <span className="caju-logo">cajú</span>
+        <p className="caju-loading-text">
+          conectá tu Nostr para unirte a <code>{sessionId}</code>
+        </p>
+      </div>
+      <LoginModal isOpen onClose={() => { /* noop — sin login no hay sala */ }} />
       <style>{lobbyStyles}</style>
     </main>
   )

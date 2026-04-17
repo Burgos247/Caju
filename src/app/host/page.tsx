@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation"
 import { useHostSession } from "@/lib/hooks"
 import { useGameStore, selectLeaderboard, selectAnswerCount } from "@/store/gameStore"
 import { QuestionContent } from "@/types/nostr"
+import { LoginModal } from "@/components/LoginModal"
 
 // ─── Page root ────────────────────────────────────────────────────────────────
 
 export default function HostPage() {
-  const { phase, sessionId, createSession, pushQuestion, finishSession, error } =
+  const { myPubkey, phase, sessionId, createSession, pushQuestion, finishSession, error } =
     useHostSession()
+
+  // Sin login no se puede crear quiz — mostramos modal antes que cualquier pantalla.
+  if (!myPubkey) return <LoginGate role="host" />
 
   if (phase === "idle") return <SetupScreen onCreate={createSession} error={error} />
   if (phase === "lobby") return <LobbyScreen sessionId={sessionId!} />
@@ -19,6 +23,28 @@ export default function HostPage() {
   if (phase === "results") return <FinishedScreen sessionId={sessionId!} />
 
   return null
+}
+
+// ─── 0. Login gate ────────────────────────────────────────────────────────────
+
+function LoginGate({ role }: { role: "host" | "player" }) {
+  return (
+    <main className="caju-host">
+      <div className="caju-host__inner">
+        <div className="caju-host__header">
+          <span className="caju-logo">cajú</span>
+          <span className="caju-host__role">{role}</span>
+        </div>
+        <div>
+          <p className="caju-label">primero lo primero</p>
+          <h1 className="caju-section-title">conectá tu Nostr para empezar</h1>
+        </div>
+        <p className="caju-hint">cajú es 100% Nostr — necesitás una identidad para crear quizzes</p>
+      </div>
+      <LoginModal isOpen onClose={() => { /* noop — sin login no hay nada que mostrar */ }} />
+      <style>{hostStyles}</style>
+    </main>
+  )
 }
 
 // ─── 1. Setup — crear quiz ────────────────────────────────────────────────────

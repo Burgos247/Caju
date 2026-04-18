@@ -105,25 +105,24 @@ function shortKey(pubkey: string) {
 }
 
 const resultsStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
-
   .caju-results {
     min-height: 100svh;
-    background: #0e0e0e;
+    background: var(--bg);
     display: flex;
     align-items: flex-start;
     justify-content: center;
     padding: 1.5rem;
-    font-family: 'Syne', sans-serif;
+    padding-top: calc(1.5rem + var(--safe-top));
+    padding-bottom: calc(3rem + var(--safe-bottom));
+    font-family: var(--font-display);
   }
 
   .caju-results__inner {
     width: 100%;
-    max-width: 440px;
+    max-width: var(--w-content);
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    padding-bottom: 3rem;
   }
 
   .caju-logo {

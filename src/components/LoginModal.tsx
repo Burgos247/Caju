@@ -17,9 +17,12 @@ type Tab = "extension" | "nsec" | "bunker"
 interface LoginModalProps {
   isOpen: boolean
   onClose: () => void
+  // Cuando true, oculta el × y desactiva click-en-overlay para cerrar.
+  // Útil cuando el modal es la única pantalla posible (ej. login obligatorio).
+  blocking?: boolean
 }
 
-export function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, blocking = false }: LoginModalProps) {
   const setUser = useAuthStore((s) => s.setUser)
   const lastMethod = useAuthStore((s) => s.loginMethod)
 
@@ -31,23 +34,19 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [busy, setBusy] = useState<LoginMethod | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Inputs
   const [nsec, setNsec] = useState("")
   const [bunkerUrl, setBunkerUrl] = useState("")
 
-  // NostrConnect QR
   const [qrSession, setQrSession] = useState<NostrConnectSession | null>(null)
   // Una vez paireado, NO cancelamos el signer en cleanup — sigue activo para firmar.
   const qrPairedRef = useRef(false)
 
-  // Reset state al abrir
   useEffect(() => {
     if (!isOpen) return
     setError(null)
     setBusy(null)
   }, [isOpen])
 
-  // Cleanup QR session on unmount sólo si no llegamos a parear.
   useEffect(() => {
     return () => {
       if (!qrPairedRef.current) qrSession?.cancel()
@@ -63,7 +62,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     try {
       const { user } = await fn()
       await setUser(user, method)
-      // Métodos no-QR — si había un QR colgado lo descartamos.
       if (qrSession && !qrPairedRef.current) qrSession.cancel()
       setQrSession(null)
       onClose()
@@ -102,14 +100,24 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   if (!isOpen) return null
 
+  const handleOverlayClick = () => {
+    if (!blocking) onClose()
+  }
+
   return (
-    <div className="caju-login-overlay" onClick={onClose}>
-      <div className="caju-login-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="caju-login-overlay" onClick={handleOverlayClick}>
+      <div className="caju-login-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="caju-login-modal__header">
-          <span className="caju-logo">cajú</span>
-          <button className="caju-login-modal__close" onClick={onClose} aria-label="cerrar">
-            ×
-          </button>
+          <span className="caju-login-modal__logo">cajú</span>
+          {!blocking && (
+            <button
+              className="caju-login-modal__close"
+              onClick={onClose}
+              aria-label="cerrar"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         <h2 className="caju-login-modal__title">conectar con Nostr</h2>
@@ -147,7 +155,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   : "no detectamos extensión NIP-07. instalá Alby o nos2x, o usá otro método."}
               </p>
               <button
-                className="caju-btn-primary"
+                className="caju-login-btn-primary"
                 onClick={onExtension}
                 disabled={!hasExtension || busy !== null}
               >
@@ -163,7 +171,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 la próxima vez vas a tener que pegarla otra vez.
               </p>
               <input
-                className="caju-input"
+                className="caju-login-input"
                 type="password"
                 placeholder="nsec1…"
                 value={nsec}
@@ -172,7 +180,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 spellCheck={false}
               />
               <button
-                className="caju-btn-primary"
+                className="caju-login-btn-primary"
                 onClick={onNsec}
                 disabled={!nsec.trim() || busy !== null}
               >
@@ -190,7 +198,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
               {!qrSession ? (
                 <button
-                  className="caju-btn-secondary"
+                  className="caju-login-btn-secondary"
                   onClick={startQrFlow}
                   disabled={busy !== null}
                 >
@@ -203,7 +211,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   </div>
                   <p className="caju-login-qr__hint">esperando conexión…</p>
                   <button
-                    className="caju-btn-ghost"
+                    className="caju-login-btn-ghost"
                     onClick={() => {
                       qrSession.cancel()
                       setQrSession(null)
@@ -218,7 +226,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <div className="caju-login-divider">o</div>
 
               <input
-                className="caju-input"
+                className="caju-login-input"
                 type="text"
                 placeholder="bunker://npub…@relay.nsec.app?secret=…"
                 value={bunkerUrl}
@@ -227,7 +235,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 spellCheck={false}
               />
               <button
-                className="caju-btn-primary"
+                className="caju-login-btn-primary"
                 onClick={onBunker}
                 disabled={!bunkerUrl.trim() || busy !== null}
               >
@@ -250,10 +258,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
 }
 
 const loginStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; }
-
   .caju-login-overlay {
     position: fixed;
     inset: 0;
@@ -263,47 +267,61 @@ const loginStyles = `
     align-items: center;
     justify-content: center;
     padding: 1.25rem;
+    padding-bottom: calc(1.25rem + var(--safe-bottom));
+    padding-top: calc(1.25rem + var(--safe-top));
     z-index: 1000;
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
   }
 
   .caju-login-modal {
     width: 100%;
     max-width: 420px;
-    background: #141414;
-    border: 0.5px solid #2a2a2a;
-    border-radius: 14px;
+    max-height: 100%;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 0.5px solid var(--border-3);
+    border-radius: var(--radius-xl);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    color: #f5f5f5;
+    color: var(--fg-6);
   }
 
   .caju-login-modal__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-height: 44px;
   }
 
-  .caju-logo {
+  .caju-login-modal__logo {
     font-size: 1.25rem;
     font-weight: 800;
     letter-spacing: -0.04em;
-    color: #f0e040;
+    color: var(--accent);
   }
 
   .caju-login-modal__close {
+    width: 44px;
+    height: 44px;
     background: transparent;
     border: none;
-    color: #555;
-    font-size: 1.6rem;
+    color: var(--fg-3);
+    font-size: 1.8rem;
     line-height: 1;
     cursor: pointer;
-    padding: 0 6px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.12s, background 0.12s;
   }
 
-  .caju-login-modal__close:hover { color: #aaa; }
+  .caju-login-modal__close:hover {
+    color: var(--fg-5);
+    background: var(--bg-elev);
+  }
 
   .caju-login-modal__title {
     font-size: 1.5rem;
@@ -315,7 +333,7 @@ const loginStyles = `
 
   .caju-login-modal__sub {
     font-size: 0.85rem;
-    color: #666;
+    color: var(--fg-4);
     margin: -0.6rem 0 0;
   }
 
@@ -323,33 +341,33 @@ const loginStyles = `
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 4px;
-    background: #0e0e0e;
-    border: 0.5px solid #1e1e1e;
-    border-radius: 8px;
+    background: var(--bg);
+    border: 0.5px solid var(--border-2);
+    border-radius: var(--radius);
     padding: 4px;
   }
 
   .caju-login-tab {
-    padding: 8px 6px;
+    padding: 10px 6px;
     border-radius: 5px;
     background: transparent;
     border: none;
-    color: #555;
+    color: var(--fg-3);
     font-size: 0.78rem;
     font-weight: 700;
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
     cursor: pointer;
     text-transform: lowercase;
     letter-spacing: 0.02em;
     transition: all 0.12s;
   }
 
-  .caju-login-tab:hover:not(:disabled) { color: #ccc; }
+  .caju-login-tab:hover:not(:disabled) { color: var(--fg-5); }
   .caju-login-tab:disabled { opacity: 0.35; cursor: not-allowed; }
 
   .caju-login-tab--active {
-    background: #1a1900;
-    color: #f0e040;
+    background: var(--accent-soft-bg);
+    color: var(--accent);
   }
 
   .caju-login-body {
@@ -364,87 +382,93 @@ const loginStyles = `
 
   .caju-login-pane__hint {
     font-size: 0.82rem;
-    color: #888;
+    color: var(--fg-4);
     line-height: 1.5;
     margin: 0;
   }
 
   .caju-login-pane__hint code {
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     font-size: 0.78rem;
-    color: #f0e040;
-    background: #0e0e0e;
-    border: 0.5px solid #1e1e1e;
+    color: var(--accent);
+    background: var(--bg);
+    border: 0.5px solid var(--border-2);
     border-radius: 3px;
     padding: 1px 5px;
   }
 
-  .caju-input {
+  .caju-login-input {
     width: 100%;
-    background: #0e0e0e;
-    border: 0.5px solid #2a2a2a;
-    border-radius: 8px;
+    background: var(--bg);
+    border: 0.5px solid var(--border-3);
+    border-radius: var(--radius);
     padding: 12px 14px;
     font-size: 0.9rem;
-    font-family: 'DM Mono', monospace;
-    color: #f5f5f5;
+    font-family: var(--font-mono);
+    color: var(--fg-6);
     outline: none;
     transition: border-color 0.15s;
+    min-height: 44px;
   }
 
-  .caju-input:focus { border-color: #f0e040; }
-  .caju-input::placeholder { color: #2a2a2a; }
+  .caju-login-input:focus { border-color: var(--accent); }
+  .caju-login-input::placeholder { color: var(--fg-1); }
 
-  .caju-btn-primary {
+  .caju-login-btn-primary {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     border-radius: 9px;
     border: none;
-    background: #f0e040;
-    color: #0e0e0e;
+    background: var(--accent);
+    color: var(--bg);
     font-size: 0.9rem;
     font-weight: 800;
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
     cursor: pointer;
     letter-spacing: -0.02em;
     transition: all 0.15s;
+    min-height: 44px;
   }
 
-  .caju-btn-primary:hover:not(:disabled) { background: #ffe820; }
-  .caju-btn-primary:active:not(:disabled) { transform: scale(0.985); }
-  .caju-btn-primary:disabled { opacity: 0.35; cursor: default; }
+  .caju-login-btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .caju-login-btn-primary:active:not(:disabled) { transform: scale(0.985); }
+  .caju-login-btn-primary:disabled { opacity: 0.35; cursor: default; }
 
-  .caju-btn-secondary {
+  .caju-login-btn-secondary {
     width: 100%;
-    padding: 11px;
+    padding: 12px;
     border-radius: 9px;
     background: transparent;
-    border: 0.5px solid #2a2a2a;
-    color: #ccc;
+    border: 0.5px solid var(--border-3);
+    color: var(--fg-5);
     font-size: 0.88rem;
     font-weight: 700;
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
     cursor: pointer;
     transition: all 0.15s;
+    min-height: 44px;
   }
 
-  .caju-btn-secondary:hover:not(:disabled) { border-color: #f0e040; color: #f0e040; }
-  .caju-btn-secondary:disabled { opacity: 0.35; cursor: default; }
+  .caju-login-btn-secondary:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .caju-login-btn-secondary:disabled { opacity: 0.35; cursor: default; }
 
-  .caju-btn-ghost {
+  .caju-login-btn-ghost {
     background: transparent;
-    border: 0.5px solid #2a2a2a;
+    border: 0.5px solid var(--border-3);
     border-radius: 7px;
-    padding: 7px 14px;
-    color: #555;
+    padding: 8px 16px;
+    color: var(--fg-3);
     font-size: 0.78rem;
     font-weight: 700;
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
     cursor: pointer;
     transition: all 0.12s;
   }
 
-  .caju-btn-ghost:hover { border-color: #555; color: #aaa; }
+  .caju-login-btn-ghost:hover { border-color: var(--fg-3); color: var(--fg-5); }
 
   .caju-login-qr {
     display: flex;
@@ -454,27 +478,27 @@ const loginStyles = `
   }
 
   .caju-login-qr__frame {
-    background: #0e0e0e;
-    border: 0.5px solid #2a2a2a;
-    border-radius: 10px;
+    background: var(--bg);
+    border: 0.5px solid var(--border-3);
+    border-radius: var(--radius-lg);
     padding: 14px;
     display: flex;
   }
 
   .caju-login-qr__hint {
     font-size: 0.78rem;
-    color: #6ee7b7;
+    color: var(--success);
     margin: 0;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
   }
 
   .caju-login-divider {
     text-align: center;
     font-size: 0.7rem;
-    color: #333;
+    color: var(--fg-2);
     text-transform: uppercase;
     letter-spacing: 0.2em;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
     position: relative;
     padding: 6px 0;
   }
@@ -486,7 +510,7 @@ const loginStyles = `
     top: 50%;
     width: 38%;
     height: 0.5px;
-    background: #1e1e1e;
+    background: var(--border-2);
   }
 
   .caju-login-divider::before { left: 0; }
@@ -494,9 +518,9 @@ const loginStyles = `
 
   .caju-login-error {
     font-size: 0.82rem;
-    color: #f87171;
+    color: var(--danger);
     margin: 0;
-    background: #1a0606;
+    background: var(--danger-bg);
     border: 0.5px solid #2a0a0a;
     border-radius: 7px;
     padding: 10px 12px;
@@ -504,11 +528,11 @@ const loginStyles = `
 
   .caju-login-modal__footer {
     font-size: 0.7rem;
-    color: #333;
+    color: var(--fg-2);
     margin: 0;
     text-align: center;
-    font-family: 'DM Mono', monospace;
-    border-top: 0.5px solid #1a1a1a;
+    font-family: var(--font-mono);
+    border-top: 0.5px solid var(--border-1);
     padding-top: 1rem;
   }
 `

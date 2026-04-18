@@ -102,7 +102,7 @@ function LoginGate({ sessionId }: { sessionId: string }) {
           conectá tu Nostr para unirte a <code>{sessionId}</code>
         </p>
       </div>
-      <LoginModal isOpen onClose={() => { /* noop — sin login no hay sala */ }} />
+      <LoginModal isOpen blocking onClose={() => { /* noop — sin login no hay sala */ }} />
       <style>{lobbyStyles}</style>
     </main>
   )
@@ -133,21 +133,21 @@ function ErrorScreen({ message }: { message: string }) {
 }
 
 const lobbyStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
-
   .caju-lobby {
     min-height: 100svh;
-    background: #0e0e0e;
+    background: var(--bg);
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    font-family: 'Syne', sans-serif;
+    padding-top: calc(1.5rem + var(--safe-top));
+    padding-bottom: calc(1.5rem + var(--safe-bottom));
+    font-family: var(--font-display);
   }
 
   .caju-lobby__inner {
     width: 100%;
-    max-width: 400px;
+    max-width: var(--w-narrow);
     display: flex;
     flex-direction: column;
     gap: 2.5rem;
@@ -156,7 +156,12 @@ const lobbyStyles = `
   .caju-lobby__inner--loading,
   .caju-lobby__inner--error {
     align-items: center;
-    gap: 1.5rem;
+    gap: 1.25rem;
+    background: var(--bg-card);
+    border: 0.5px solid var(--border-2);
+    border-radius: var(--radius-xl);
+    padding: 2rem 1.5rem;
+    text-align: center;
   }
 
   /* Logo */
@@ -342,17 +347,22 @@ const lobbyStyles = `
   .caju-loading-text,
   .caju-error-text {
     font-size: 0.9rem;
-    color: #444;
+    color: var(--fg-3);
     margin: 0;
     text-align: center;
+    line-height: 1.5;
   }
 
   .caju-loading-text code {
-    font-family: 'DM Mono', monospace;
-    color: #666;
+    font-family: var(--font-mono);
+    color: var(--fg-4);
+    background: var(--bg);
+    border: 0.5px solid var(--border-2);
+    border-radius: 4px;
+    padding: 1px 6px;
   }
 
   .caju-error-text {
-    color: #f87171;
+    color: var(--danger);
   }
 `

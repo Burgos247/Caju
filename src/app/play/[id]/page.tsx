@@ -202,10 +202,10 @@ function WaitingScreen() {
 
 function ErrorScreen({ message }: { message: string }) {
   return (
-    <main className="caju-play">
+    <main className="caju-play caju-play--waiting">
       <div className="caju-play__inner caju-play__inner--center">
         <span className="caju-logo">cajú</span>
-        <p style={{ color: "#f87171", fontSize: "0.9rem" }}>{message}</p>
+        <p className="caju-play__error">{message}</p>
       </div>
       <style>{playStyles}</style>
     </main>
@@ -219,14 +219,12 @@ const LETTERS = ["A", "B", "C", "D"]
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const playStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
-
   .caju-play {
     min-height: 100svh;
-    background: #0e0e0e;
+    background: var(--bg);
     display: flex;
     flex-direction: column;
-    font-family: 'Syne', sans-serif;
+    font-family: var(--font-display);
     position: relative;
   }
 
@@ -237,9 +235,10 @@ const playStyles = `
 
   .caju-play__inner {
     width: 100%;
-    max-width: 480px;
+    max-width: var(--w-content);
     margin: 0 auto;
-    padding: 0 1.5rem 2rem;
+    padding: 0 1.5rem;
+    padding-bottom: calc(2rem + var(--safe-bottom));
     display: flex;
     flex-direction: column;
     gap: 1.75rem;
@@ -478,8 +477,20 @@ const playStyles = `
 
   .caju-waiting-hint {
     font-size: 0.85rem;
-    color: #333;
+    color: var(--fg-2);
     margin: 0;
-    font-family: 'DM Mono', monospace;
+    font-family: var(--font-mono);
+  }
+
+  .caju-play__error {
+    font-size: 0.9rem;
+    color: var(--danger);
+    background: var(--danger-bg);
+    border: 0.5px solid #2a0a0a;
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 320px;
   }
 `

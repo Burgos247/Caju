@@ -42,7 +42,7 @@ function LoginGate({ role }: { role: "host" | "player" }) {
         </div>
         <p className="caju-hint">cajú es 100% Nostr — necesitás una identidad para crear quizzes</p>
       </div>
-      <LoginModal isOpen onClose={() => { /* noop — sin login no hay nada que mostrar */ }} />
+      <LoginModal isOpen blocking onClose={() => { /* noop — sin login no hay nada que mostrar */ }} />
       <style>{hostStyles}</style>
     </main>
   )
@@ -571,17 +571,15 @@ const shortKey = (pk: string) => `${pk.slice(0, 6)}…${pk.slice(-4)}`
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const hostStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; }
-
   .caju-host {
     min-height: 100svh;
-    background: #0e0e0e;
+    background: var(--bg);
     display: flex;
     justify-content: center;
     padding: 1.5rem;
-    font-family: 'Syne', sans-serif;
+    padding-top: calc(1.5rem + var(--safe-top));
+    padding-bottom: calc(3rem + var(--safe-bottom));
+    font-family: var(--font-display);
   }
 
   .caju-host--live {
@@ -590,11 +588,10 @@ const hostStyles = `
 
   .caju-host__inner {
     width: 100%;
-    max-width: 560px;
+    max-width: var(--w-wide);
     display: flex;
     flex-direction: column;
     gap: 1.75rem;
-    padding-bottom: 3rem;
   }
 
   /* Header */

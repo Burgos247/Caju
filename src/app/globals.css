@@ -1,3 +1,60 @@
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Fonts (provistas por next/font, con fallback) */
+  --font-display: var(--font-syne), 'Syne', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), 'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Colores base */
+  --bg: #0e0e0e;
+  --bg-card: #141414;
+  --bg-elev: #1a1a1a;
+  --bg-accent-soft: #1a1900;
+
+  /* Bordes (sutil → fuerte) */
+  --border-1: #1a1a1a;
+  --border-2: #1e1e1e;
+  --border-3: #2a2a2a;
+
+  /* Texto (mute → bright) */
+  --fg-1: #2a2a2a;  /* casi invisible */
+  --fg-2: #444;     /* hint sutil */
+  --fg-3: #555;     /* label/muted */
+  --fg-4: #888;     /* secundario */
+  --fg-5: #ccc;     /* primario suave */
+  --fg-6: #f5f5f5;  /* primario fuerte */
+
+  /* Acentos */
+  --accent: #f0e040;
+  --accent-hover: #ffe820;
+  --accent-soft-bg: #1a1900;
+  --accent-soft-border: #2a2600;
+  --success: #6ee7b7;
+  --success-bg: #052015;
+  --danger: #f87171;
+  --danger-bg: #1f0808;
+  --warn: #fb923c;
+
+  /* Tipografía/shape */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  /* Anchos de contenido */
+  --w-narrow: 400px;   /* lobby/login */
+  --w-content: 480px;  /* play/results */
+  --w-wide: 560px;     /* host (más controles) */
+
+  /* Safe areas iOS */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -10,19 +67,20 @@ html {
 }
 
 body {
-  background: #0e0e0e;
-  color: #f5f5f5;
+  background: var(--bg);
+  color: var(--fg-6);
+  font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-/* Remove default button / input chrome */
 button {
   border: none;
   background: none;
   cursor: pointer;
   font-family: inherit;
+  color: inherit;
 }
 
 input, textarea, select {
@@ -35,8 +93,28 @@ a {
   text-decoration: none;
 }
 
+/* Focus visible — accesibilidad teclado */
+:focus { outline: none; }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* Scrollbar — dark & minimal */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border-3); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+
+/* Selección con tinta del acento */
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}

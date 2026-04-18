@@ -1,5 +1,20 @@
 import type { Metadata, Viewport } from "next"
+import { Syne, DM_Mono } from "next/font/google"
 import "./globals.css"
+
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["400", "700", "800"],
+  display: "swap",
+  variable: "--font-syne",
+})
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-mono",
+})
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://caju.app"
 
@@ -29,11 +44,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#0e0e0e",
+  viewportFit: "cover",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning className={`${syne.variable} ${dmMono.variable}`}>
       <body>{children}</body>
     </html>
   )

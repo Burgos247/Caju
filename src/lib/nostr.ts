@@ -4,7 +4,7 @@ import NDK, {
   NDKPrivateKeySigner,
   NDKUser,
 } from "@nostr-dev-kit/ndk"
-import { nip19 } from "nostr-tools"
+import { generateSecretKey, nip19 } from "nostr-tools"
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ export async function connectNDK(): Promise<NDK> {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type LoginMethod = "extension" | "nsec" | "bunker"
+export type LoginMethod = "extension" | "nsec" | "bunker" | "guest"
 
 export interface NostrProfile {
   pubkey: string
@@ -148,6 +148,43 @@ export async function loginWithBunker(bunkerUrl: string): Promise<NDKUser> {
   const signer = NDKNip46Signer.bunker(ndk, trimmed)
   ndk.signer = signer
   return await signer.blockUntilReady()
+}
+
+// ─── Login: invitado (efímero) ────────────────────────────────────────────────
+//
+// Genera (o restaura) una clave privada en sessionStorage. Sobrevive refresh
+// dentro de la misma pestaña pero NO entre sesiones de browser. Sin profile
+// fetch — el usuario es anónimo por diseño.
+
+const GUEST_KEY_STORAGE = "caju:guest_privkey"
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+function getOrCreateGuestPrivkey(): string {
+  if (typeof window === "undefined") {
+    throw new Error("login de invitado solo disponible en el browser")
+  }
+  const existing = sessionStorage.getItem(GUEST_KEY_STORAGE)
+  if (existing) return existing
+  const hex = bytesToHex(generateSecretKey())
+  sessionStorage.setItem(GUEST_KEY_STORAGE, hex)
+  return hex
+}
+
+export async function loginAsGuest(): Promise<NDKUser> {
+  const privkey = getOrCreateGuestPrivkey()
+  const ndk = await connectNDK()
+  const signer = new NDKPrivateKeySigner(privkey)
+  ndk.signer = signer
+  return await signer.user()
+}
+
+export function clearGuestKey(): void {
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem(GUEST_KEY_STORAGE)
+  }
 }
 
 // ─── Login: nostrconnect:// (QR pairing) ──────────────────────────────────────

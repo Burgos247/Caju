@@ -10,9 +10,11 @@ interface IdentityChipProps {
 
 export function IdentityChip({ variant = "compact" }: IdentityChipProps) {
   const profile = useAuthStore((s) => s.profile)
+  const loginMethod = useAuthStore((s) => s.loginMethod)
   const logout = useAuthStore((s) => s.logout)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const isGuest = loginMethod === "guest"
 
   // Cerrar al click afuera
   useEffect(() => {
@@ -26,8 +28,12 @@ export function IdentityChip({ variant = "compact" }: IdentityChipProps) {
 
   if (!profile) return null
 
-  const label = profile.name || shortNpub(profile.npub)
-  const initial = (profile.name || profile.npub.replace(/^npub1/, "")).charAt(0).toUpperCase()
+  const label = isGuest
+    ? `invitado · ${shortNpub(profile.npub).split("…")[0].slice(-4)}`
+    : profile.name || shortNpub(profile.npub)
+  const initial = isGuest
+    ? "?"
+    : (profile.name || profile.npub.replace(/^npub1/, "")).charAt(0).toUpperCase()
 
   return (
     <div
@@ -56,8 +62,15 @@ export function IdentityChip({ variant = "compact" }: IdentityChipProps) {
       {open && (
         <div className="caju-identity-chip__menu">
           <div className="caju-identity-chip__menu-info">
-            <span className="caju-identity-chip__menu-name">{profile.name || "anónimo"}</span>
+            <span className="caju-identity-chip__menu-name">
+              {isGuest ? "invitado" : profile.name || "anónimo"}
+            </span>
             <code className="caju-identity-chip__menu-npub">{shortNpub(profile.npub)}</code>
+            {isGuest && (
+              <span className="caju-identity-chip__menu-warn">
+                identidad efímera · se borra al cerrar la pestaña
+              </span>
+            )}
           </div>
           <button
             className="caju-identity-chip__menu-item caju-identity-chip__menu-item--danger"
@@ -185,6 +198,13 @@ const chipStyles = `
     font-family: 'DM Mono', monospace;
     font-size: 0.7rem;
     color: #555;
+  }
+
+  .caju-identity-chip__menu-warn {
+    font-size: 0.65rem;
+    color: #fb923c;
+    margin-top: 4px;
+    line-height: 1.4;
   }
 
   .caju-identity-chip__menu-item {

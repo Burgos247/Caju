@@ -1,7 +1,13 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { NDKUser } from "@nostr-dev-kit/ndk"
-import { LoginMethod, NostrProfile, parseProfile } from "@/lib/nostr"
+import {
+  LoginMethod,
+  NostrProfile,
+  parseProfile,
+  loginAsGuest,
+  clearGuestKey,
+} from "@/lib/nostr"
 import { useGameStore } from "./gameStore"
 
 interface AuthState {
@@ -35,7 +41,12 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       setUser: async (user, method) => {
         set({ isLoading: true, error: null })
         try {
-          const profile = await parseProfile(user)
+          // Para invitados no fetcheamos profile — son anónimos por diseño y
+          // ahorra el timeout de 4s que de todos modos no devolvería nada.
+          const profile: NostrProfile =
+            method === "guest"
+              ? { pubkey: user.pubkey, npub: user.npub }
+              : await parseProfile(user)
           set({
             isConnected: true,
             isLoading: false,
@@ -55,6 +66,8 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       setError: (msg) => set({ error: msg }),
 
       logout: () => {
+        // Si era invitado, descartar también la clave en sessionStorage.
+        clearGuestKey()
         set(initialState)
         useGameStore.getState().reset()
       },
@@ -66,6 +79,26 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         loginMethod: s.loginMethod,
         profile: s.profile,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Al rehidratar: si el método persistido es "guest" intentamos
+        // re-attach al signer desde sessionStorage. Si la sesión del browser
+        // se cerró y la key no está, limpiamos la auth para forzar re-login.
+        if (state?.loginMethod === "guest" && state.profile) {
+          loginAsGuest()
+            .then((user) => {
+              useGameStore.getState().setMyPubkey(user.pubkey)
+              useAuthStore.setState({ isConnected: true })
+            })
+            .catch(() => {
+              useAuthStore.setState({ ...initialState })
+            })
+        } else if (state?.loginMethod && state.profile) {
+          // Para extension/nsec/bunker: marcamos hidratado pero el signer no
+          // está vivo aún. Las pages que requieren signer mostrarán LoginGate
+          // si el flujo lo necesita. (Por ahora dejamos isConnected en false
+          // porque no podemos firmar sin re-pegar nsec / re-aprobar extensión.)
+        }
+      },
     }
   )
 )

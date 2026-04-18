@@ -6,6 +6,7 @@ import {
   loginWithExtension,
   loginWithNsec,
   loginWithBunker,
+  loginAsGuest,
   createNostrConnectSession,
   type LoginMethod,
   type NostrConnectSession,
@@ -79,6 +80,9 @@ export function LoginModal({ isOpen, onClose, blocking = false }: LoginModalProp
 
   const onBunker = () =>
     handle("bunker", async () => ({ user: await loginWithBunker(bunkerUrl) }))
+
+  const onGuest = () =>
+    handle("guest", async () => ({ user: await loginAsGuest() }))
 
   const startQrFlow = async () => {
     setError(null)
@@ -246,6 +250,19 @@ export function LoginModal({ isOpen, onClose, blocking = false }: LoginModalProp
         </div>
 
         {error && <p className="caju-login-error">{error}</p>}
+
+        <div className="caju-login-guest">
+          <button
+            className="caju-login-guest__btn"
+            onClick={onGuest}
+            disabled={busy !== null}
+          >
+            {busy === "guest" ? "creando identidad…" : "entrar como invitado"}
+          </button>
+          <p className="caju-login-guest__hint">
+            generamos una clave efímera en este dispositivo · se borra al cerrar la pestaña
+          </p>
+        </div>
 
         <p className="caju-login-modal__footer">
           ⚡ identidad on-relay · sin servidores
@@ -534,5 +551,46 @@ const loginStyles = `
     font-family: var(--font-mono);
     border-top: 0.5px solid var(--border-1);
     padding-top: 1rem;
+  }
+
+  .caju-login-guest {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    border-top: 0.5px solid var(--border-1);
+    padding-top: 1rem;
+  }
+
+  .caju-login-guest__btn {
+    background: transparent;
+    border: none;
+    color: var(--fg-4);
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--fg-2);
+    text-underline-offset: 3px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    transition: color 0.12s;
+  }
+
+  .caju-login-guest__btn:hover:not(:disabled) {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+  }
+  .caju-login-guest__btn:disabled { opacity: 0.4; cursor: default; }
+
+  .caju-login-guest__hint {
+    font-size: 0.68rem;
+    color: var(--fg-2);
+    margin: 0;
+    text-align: center;
+    line-height: 1.4;
+    max-width: 280px;
+    font-family: var(--font-mono);
   }
 `

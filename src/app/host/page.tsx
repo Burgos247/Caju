@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useShallow } from "zustand/react/shallow"
 import { useHostSession } from "@/lib/hooks"
 import { useGameStore, selectLeaderboard, selectAnswerCount } from "@/store/gameStore"
 import { QuestionContent } from "@/types/nostr"
@@ -370,7 +371,7 @@ function LiveScreen({
   const session = useGameStore((s) => s.session)
   const playerCount = useGameStore((s) => Object.keys(s.players).length)
   const answerCount = useGameStore(selectAnswerCount)
-  const leaderboard = useGameStore(selectLeaderboard)
+  const leaderboard = useGameStore(useShallow(selectLeaderboard))
 
   const [timeLeft, setTimeLeft] = useState(0)
   const [advancing, setAdvancing] = useState(false)
@@ -537,7 +538,7 @@ function LiveScreen({
 
 function FinishedScreen({ sessionId }: { sessionId: string }) {
   const router = useRouter()
-  const leaderboard = useGameStore(selectLeaderboard)
+  const leaderboard = useGameStore(useShallow(selectLeaderboard))
   const session = useGameStore((s) => s.session)
 
   return (

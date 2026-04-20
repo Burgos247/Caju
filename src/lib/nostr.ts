@@ -30,7 +30,13 @@ declare global {
 }
 
 function createNDK(): NDK {
-  return new NDK({ explicitRelayUrls: EXPLICIT_RELAYS })
+  // filterValidationMode "ignore": NDK v3 valida que tags #e/#p sean hex 64
+  // chars; nuestro protocolo usa sessionIds nanoid en tag custom (no hex), y
+  // la validación rompe las suscripciones. Los relays aceptan los eventos.
+  return new NDK({
+    explicitRelayUrls: EXPLICIT_RELAYS,
+    filterValidationMode: "ignore",
+  })
 }
 
 export function getNDK(): NDK {

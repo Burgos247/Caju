@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from "react"
+import { useShallow } from "zustand/react/shallow"
 import { useGameStore, selectLeaderboard, selectCurrentQuestion, selectAnswerCount } from "@/store/gameStore"
 import { useAuthStore } from "@/store/authStore"
 import { connectNDK, ensureSigner, loginWithExtension } from "@/lib/nostr"
@@ -145,7 +146,10 @@ export function usePlayerSession(sessionId: string) {
   const currentQuestion = useGameStore(selectCurrentQuestion)
   const hasAnswered = useGameStore((s) => s.hasAnswered)
   const myAnswers = useGameStore((s) => s.myAnswers)
-  const leaderboard = useGameStore(selectLeaderboard)
+  // useShallow: el selector retorna un Array nuevo cada render — sin shallow
+  // compare, useSyncExternalStore detecta "cambio" en cada render y dispara
+  // un re-render → loop infinito (React #185).
+  const leaderboard = useGameStore(useShallow(selectLeaderboard))
   const answerCount = useGameStore(selectAnswerCount)
   const error = useGameStore((s) => s.error)
 
@@ -212,5 +216,5 @@ export function usePlayerSession(sessionId: string) {
 // Selector derivado, usable en host y player views.
 
 export function useLeaderboard() {
-  return useGameStore(selectLeaderboard)
+  return useGameStore(useShallow(selectLeaderboard))
 }

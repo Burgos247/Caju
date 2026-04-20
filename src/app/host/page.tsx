@@ -99,18 +99,41 @@ function SetupScreen({
     })
   }
 
+  // Razón puntual por la que la sesión no se puede crear (o null si todo OK).
+  // Se usa tanto para disable del botón como para el hint al usuario.
+  const invalidReason = ((): string | null => {
+    if (!title.trim()) return "falta el nombre del quiz"
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      if (!q.text.trim()) return `falta el texto de la pregunta ${i + 1}`
+      const filled = q.options.filter((o) => o.trim()).length
+      if (filled < 2) return `pregunta ${i + 1}: necesitás al menos 2 opciones`
+      if (!q.options[q.correct_index]?.trim())
+        return `pregunta ${i + 1}: marcá una opción con texto como correcta`
+    }
+    return null
+  })()
+  const isValid = invalidReason === null
+
   const handleCreate = async () => {
-    if (!title.trim() || questions.some((q) => !q.text.trim())) return
+    if (!isValid) return
     setLoading(true)
-    await onCreate({ title: title.trim(), description: description.trim() || undefined, question_count: questions.length })
-    // Las preguntas se almacenan en sessionStorage para pushearlas en orden desde LiveScreen
-    sessionStorage.setItem("caju:questions", JSON.stringify(questions))
+    // Filtramos opciones vacías y remapeamos correct_index al nuevo índice.
+    const normalized: QuestionContent[] = questions.map((q) => {
+      const filled = q.options
+        .map((o, idx) => ({ text: o.trim(), idx }))
+        .filter(({ text }) => text)
+      const newCorrect = filled.findIndex(({ idx }) => idx === q.correct_index)
+      return {
+        ...q,
+        options: filled.map(({ text }) => text),
+        correct_index: newCorrect,
+      }
+    })
+    await onCreate({ title: title.trim(), description: description.trim() || undefined, question_count: normalized.length })
+    sessionStorage.setItem("caju:questions", JSON.stringify(normalized))
     setLoading(false)
   }
-
-  const isValid = title.trim().length > 0 && questions.every((q) =>
-    q.text.trim() && q.options.every((o) => o.trim())
-  )
 
   return (
     <main className="caju-host">
@@ -146,15 +169,22 @@ function SetupScreen({
           <div className="caju-q-nav">
             <label className="caju-label">preguntas</label>
             <div className="caju-q-tabs">
-              {questions.map((q, i) => (
-                <button
-                  key={i}
-                  className={`caju-q-tab ${i === activeQ ? "caju-q-tab--active" : ""} ${q.text.trim() && q.options.every((o) => o.trim()) ? "caju-q-tab--done" : ""}`}
-                  onClick={() => setActiveQ(i)}
-                >
-                  {i + 1}
-                </button>
-              ))}
+              {questions.map((q, i) => {
+                const filledCount = q.options.filter((o) => o.trim()).length
+                const isDone =
+                  q.text.trim().length > 0 &&
+                  filledCount >= 2 &&
+                  !!q.options[q.correct_index]?.trim()
+                return (
+                  <button
+                    key={i}
+                    className={`caju-q-tab ${i === activeQ ? "caju-q-tab--active" : ""} ${isDone ? "caju-q-tab--done" : ""}`}
+                    onClick={() => setActiveQ(i)}
+                  >
+                    {i + 1}
+                  </button>
+                )
+              })}
               <button className="caju-q-tab caju-q-tab--add" onClick={addQuestion}>+</button>
             </div>
           </div>
@@ -225,6 +255,8 @@ function SetupScreen({
         </section>
 
         {error && <p className="caju-error">{error}</p>}
+
+        {invalidReason && <p className="caju-hint">{invalidReason}</p>}
 
         <button
           className="caju-btn-primary"

@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from "react"
 import { useGameStore, selectLeaderboard, selectCurrentQuestion, selectAnswerCount } from "@/store/gameStore"
 import { useAuthStore } from "@/store/authStore"
-import { connectNDK, loginWithExtension } from "@/lib/nostr"
+import { connectNDK, ensureSigner, loginWithExtension } from "@/lib/nostr"
 import {
   publishSession,
   publishQuestion,
@@ -65,12 +65,14 @@ export function useHostSession() {
       try {
         setIsHost(true)
         const ndk = await connectNDK()
+        await ensureSigner(useAuthStore.getState().loginMethod)
         const { sessionId: id } = await publishSession(ndk, opts)
         setSessionId(id)
         setPhase("lobby")
         await subscribeToSession(id)
         return id
       } catch (err) {
+        console.error("[caju] createSession failed:", err)
         setError(`Error al crear sesión: ${err}`)
         return null
       }
@@ -86,10 +88,12 @@ export function useHostSession() {
 
       try {
         const ndk = await connectNDK()
+        await ensureSigner(useAuthStore.getState().loginMethod)
         await publishQuestion(ndk, sid, index, question)
         setCurrentQuestionIndex(index)
         setPhase("question")
       } catch (err) {
+        console.error("[caju] pushQuestion failed:", err)
         setError(`Error al publicar pregunta: ${err}`)
       }
     },
@@ -102,6 +106,7 @@ export function useHostSession() {
 
     try {
       const ndk = await connectNDK()
+      await ensureSigner(useAuthStore.getState().loginMethod)
       const content = {
         title: sess.title,
         description: sess.description,
@@ -111,6 +116,7 @@ export function useHostSession() {
       await updateSessionStatus(ndk, sid, "finished", content)
       setPhase("results")
     } catch (err) {
+      console.error("[caju] finishSession failed:", err)
       setError(`Error al finalizar sesión: ${err}`)
     }
   }, [])
@@ -176,10 +182,12 @@ export function usePlayerSession(sessionId: string) {
 
       try {
         const ndk = await connectNDK()
+        await ensureSigner(useAuthStore.getState().loginMethod)
         await publishAnswer(ndk, sid, currentQuestionIndex, selected_index)
         setMyAnswer(currentQuestionIndex, selected_index)
         setHasAnswered(true)
       } catch (err) {
+        console.error("[caju] submitAnswer failed:", err)
         setError(`Error al enviar respuesta: ${err}`)
       }
     },

@@ -40,8 +40,8 @@ export type SessionStatus = "lobby" | "finished"
 
 export interface QuestionContent {
   text: string
-  options: string[]           // exactamente 4
-  correct_index: number       // 0-3
+  options: string[]           // 2-4 opciones
+  correct_index: number       // índice válido dentro de options
   duration: number            // segundos
 }
 

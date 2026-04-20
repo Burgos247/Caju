@@ -187,6 +187,19 @@ export function clearGuestKey(): void {
   }
 }
 
+// Garantiza que el NDK singleton tenga signer attacheado antes de publicar.
+// Casos: HMR de dev resetea el módulo, o la rehidratación async de zustand
+// todavía no corrió cuando se dispara el publish.
+export async function ensureSigner(method: LoginMethod | null): Promise<void> {
+  const ndk = getNDK()
+  if (ndk.signer) return
+  if (method === "guest") {
+    await loginAsGuest()
+  }
+  // extension/nsec/bunker no se pueden re-attachar silenciosamente — el caller
+  // debería redirigir a LoginGate. Dejamos signer null y el publish tirará error.
+}
+
 // ─── Login: nostrconnect:// (QR pairing) ──────────────────────────────────────
 
 export async function createNostrConnectSession(
